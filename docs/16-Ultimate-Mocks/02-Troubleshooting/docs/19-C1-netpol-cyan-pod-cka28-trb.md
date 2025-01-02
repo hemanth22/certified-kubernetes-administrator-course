@@ -14,7 +14,7 @@ Two other pods called `cyan-white-cka28-trb1` and `cyan-black-cka28-trb` are als
 
 The nginx based app running on the `cyan-pod-cka28-trb` pod is exposed internally on the default nginx port (80).
 
-**Expectation**: This app should only be accessible from the `cyan-white-cka28`-trb1 pod.
+**Expectation**: This app should only be accessible from the `cyan-white-cka28-trb` pod.
 
 **Problem**: This app is not accessible from anywhere.
 
@@ -25,6 +25,27 @@ Note: You can exec into `cyan-white-cka28-trb` and `cyan-black-cka28-trb` pods a
 You may update the network policy, but make sure it is not deleted from the `cyan-ns-cka28-trb` namespace.
 
 ---
+
+### Update - Intermittent lab bug!
+
+The solution given below is correct, however in some instances it doesn't work due to an intermittent bug in the installation of Weave to the lab environment found by a very astute community member in [this thread](https://kodekloud.com/community/t/network-policy-blocking-all-the-ingress-traffic/300501/15?u=alistair_kodekloud) on the community forum.
+
+TL;DR - To detect the presence of this bug, run the following two commands. Bonus - see if you can understand how they work! Note that the first one is split across multiple lines with `\` for legibility. This is a valid construct in shell script.
+
+```
+kubectl exec -n kube-system \
+   $(kubectl get po -n kube-system --selector name=weave-net -o jsonpath='{.items[0].metadata.name}') \
+   -c weave -- printenv | grep IPALLOC
+
+kubectl get configmap -n kube-system kube-proxy -o jsonpath={'.data.config\.conf}' | yq e .clusterCIDR -
+```
+
+Both should report the same CIDR range, e.g. `10.244.0.0/16`. If they are not both the same (doesn't matter what they actually are, but must be the same), then the lab has the bug. Should you encounter this (netpol not working even though you have followed the solution below), then practice your skills of [manual pod scheduling](../../../03-Scheduling/02-Manual-Scheduling.md), and get all three concerned pods to restart on the same worker node (choose either node). Then the netpol should take effect.
+
+
+
+
+### Solution
 
 First, let's examine the policy we have
 
